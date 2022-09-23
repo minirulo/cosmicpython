@@ -1,5 +1,6 @@
 import abc
 import model
+from typing import List
 
 
 class AbstractRepository(abc.ABC):
@@ -12,11 +13,18 @@ class AbstractRepository(abc.ABC):
         raise NotImplementedError
 
 
-class SqlRepository(abc.ABC):
-    @abc.abstractclassmethod
+class SqlAlchemyRepository(abc.ABC):
+    def __init__(self, session) -> None:
+        self.session = session
+
+    def commit(self):
+        self.session.commit()
+
     def add(self, batch: model.Batch):
-        raise NotImplementedError
+        self.session.add(batch)
     
-    @abc.abstractclassmethod
     def get(self, reference) -> model.Batch:
-        raise NotImplementedError
+        return self.session.query(model.Batch).filter_by(reference=reference).one()
+
+    def list(self) -> List[model.Batch]:
+        return self.session.query(model.Batch).all()
