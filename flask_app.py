@@ -33,7 +33,7 @@ def allocate_endpoint():
 
 
 @app.route("/deallocate", methods=["POST"])
-def allocate_endpoint():
+def deallocate_endpoint():
     session = get_session()
     repo = repository.SqlAlchemyRepository(session)
     line = model.OrderLine(
