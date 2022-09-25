@@ -20,8 +20,8 @@ class SqlAlchemyRepository(abc.ABC):
     def commit(self):
         self.session.commit()
 
-    def add(self, batch: model.Batch):
-        self.session.add(batch)
+    def add(self, batch: model.Batch) -> model.Batch:
+        return self.session.add(batch)
     
     def get(self, reference) -> model.Batch:
         return self.session.query(model.Batch).filter_by(reference=reference).one()

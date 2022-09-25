@@ -4,7 +4,7 @@ from datetime import date
 
 def test_orderline_mapper_can_load_lines(session):
     session.execute(
-        "INSERT INTO order_lines (orderid, sku, qty) VALUES "
+        "INSERT INTO order_lines (reference, sku, quantity) VALUES "
         '("order1", "RED-CHAIR", 12),'
         '("order1", "RED-TABLE", 13),'
         '("order2", "BLUE-LIPSTICK", 14)'
@@ -22,17 +22,17 @@ def test_orderline_mapper_can_save_lines(session):
     session.add(new_line)
     session.commit()
 
-    rows = list(session.execute('SELECT orderid, sku, qty FROM "order_lines"'))
+    rows = list(session.execute('SELECT reference, sku, quantity FROM "order_lines"'))
     assert rows == [("order1", "DECORATIVE-WIDGET", 12)]
 
 
 def test_retrieving_batches(session):
     session.execute(
-        "INSERT INTO batches (reference, sku, _purchased_quantity, eta)"
+        "INSERT INTO batches (reference, sku, quantity, eta)"
         ' VALUES ("batch1", "sku1", 100, null)'
     )
     session.execute(
-        "INSERT INTO batches (reference, sku, _purchased_quantity, eta)"
+        "INSERT INTO batches (reference, sku, quantity, eta)"
         ' VALUES ("batch2", "sku2", 200, "2011-04-11")'
     )
     expected = [
@@ -48,31 +48,31 @@ def test_saving_batches(session):
     session.add(batch)
     session.commit()
     rows = session.execute(
-        'SELECT reference, sku, _purchased_quantity, eta FROM "batches"'
+        'SELECT reference, sku, quantity, eta FROM "batches"'
     )
     assert list(rows) == [("batch1", "sku1", 100, None)]
 
 
-def test_saving_allocations(session):
+def test_savingallocated_orders(session):
     batch = model.Batch("batch1", "sku1", 100, eta=None)
     line = model.OrderLine("order1", "sku1", 10)
     batch.allocate(line)
     session.add(batch)
     session.commit()
-    rows = list(session.execute('SELECT orderline_id, batch_id FROM "allocations"'))
+    rows = list(session.execute('SELECT order_id, batch_id FROM "allocations"'))
     assert rows == [(batch.id, line.id)]
 
 
-def test_retrieving_allocations(session):
+def test_retrievingallocated_orders(session):
     session.execute(
-        'INSERT INTO order_lines (orderid, sku, qty) VALUES ("order1", "sku1", 12)'
+        'INSERT INTO order_lines (reference, sku, quantity) VALUES ("order1", "sku1", 12)'
     )
     [[olid]] = session.execute(
-        "SELECT id FROM order_lines WHERE orderid=:orderid AND sku=:sku",
-        dict(orderid="order1", sku="sku1"),
+        "SELECT id FROM order_lines WHERE reference=:reference AND sku=:sku",
+        dict(reference="order1", sku="sku1"),
     )
     session.execute(
-        "INSERT INTO batches (reference, sku, _purchased_quantity, eta)"
+        "INSERT INTO batches (reference, sku, quantity, eta)"
         ' VALUES ("batch1", "sku1", 100, null)'
     )
     [[bid]] = session.execute(
@@ -80,10 +80,10 @@ def test_retrieving_allocations(session):
         dict(ref="batch1", sku="sku1"),
     )
     session.execute(
-        "INSERT INTO allocations (orderline_id, batch_id) VALUES (:olid, :bid)",
+        "INSERT INTO allocations (order_id, batch_id) VALUES (:olid, :bid)",
         dict(olid=olid, bid=bid),
     )
 
     batch = session.query(model.Batch).one()
 
-    assert batch._allocations == {model.OrderLine("order1", "sku1", 12)}
+    assert batch.allocated_orders == {model.OrderLine("order1", "sku1", 12)}

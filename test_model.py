@@ -7,10 +7,10 @@ today = date.today()
 tomorrow = today + timedelta(days=1)
 later = tomorrow + timedelta(days=10)
 
-def make_batch_and_line(sku, batch_qty, line_qty):
+def make_batch_and_line(sku, batch_quantity, line_quantity):
     return (
-        Batch("Batch-001", sku, batch_qty, eta=date.today()),
-        OrderLine("order-123", sku, line_qty),
+        Batch("Batch-001", sku, batch_quantity, eta=date.today()),
+        OrderLine("order-123", sku, line_quantity),
     )
 
 
@@ -35,7 +35,7 @@ def test_cannot_allocate_wrong_sku():
     assert batch.can_allocate(order) is False
 
 
-def test_duplicate_allocations_processed_once():
+def test_duplicateallocated_orders_processed_once():
     batch, order = make_batch_and_line("CHAIR", 10, 2)
     batch.allocate(order)
     batch.allocate(order)

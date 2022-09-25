@@ -69,11 +69,11 @@ def add_stock(postgres_session):
     skus_added = set()
 
     def _add_stock(lines):
-        for ref, sku, qty, eta in lines:
+        for ref, sku, quantity, eta in lines:
             postgres_session.execute(
-                "INSERT INTO batches (reference, sku, _purchased_quantity, eta)"
-                " VALUES (:ref, :sku, :qty, :eta)",
-                dict(ref=ref, sku=sku, qty=qty, eta=eta),
+                "INSERT INTO batches (reference, sku, quantity, eta)"
+                " VALUES (:ref, :sku, :quantity, :eta)",
+                dict(ref=ref, sku=sku, quantity=quantity, eta=eta),
             )
             [[batch_id]] = postgres_session.execute(
                 "SELECT id FROM batches WHERE reference=:ref AND sku=:sku",
@@ -100,6 +100,36 @@ def add_stock(postgres_session):
             dict(sku=sku),
         )
         postgres_session.commit()
+
+
+@pytest.fixture
+def add_batch(postgres_session):
+    batches_added = set()
+
+    def _add_batch(ref, sku, quantity, eta):
+        postgres_session.execute(
+            "INSERT INTO batches (reference, sku, quantity, eta)"
+            " VALUES (:ref, :sku, :quantity, :eta)",
+            dict(ref=ref, sku=sku, quantity=quantity, eta=eta),
+        )
+        [[batch_id]] = postgres_session.execute(
+            "SELECT id FROM batches WHERE reference=:ref AND sku=:sku",
+            dict(ref=ref, sku=sku),
+        )
+        batches_added.add(batch_id)
+        postgres_session.commit()
+
+    yield _add_batch
+
+    for batch_id in batches_added:
+        postgres_session.execute(
+            "DELETE FROM allocations WHERE batch_id=:batch_id",
+            dict(batch_id=batch_id),
+        )
+        postgres_session.execute(
+            "DELETE FROM batches WHERE id=:batch_id",
+            dict(batch_id=batch_id),
+        )
 
 
 @pytest.fixture

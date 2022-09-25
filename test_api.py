@@ -17,7 +17,7 @@ def random_batchref(name=""):
     return f"batch-{name}-{random_suffix()}"
 
 
-def random_orderid(name=""):
+def random_reference(name=""):
     return f"order-{name}-{random_suffix()}"
 
 
@@ -34,7 +34,7 @@ def test_happy_path_returns_201_and_allocated_batch(add_stock):
             (otherbatch, othersku, 100, None),
         ]
     )
-    data = {"orderid": random_orderid(), "sku": sku, "qty": 3}
+    data = {"reference": random_reference(), "sku": sku, "quantity": 3}
     url = config.get_api_url()
 
     r = requests.post(f"{url}/allocate", json=data)
@@ -45,8 +45,8 @@ def test_happy_path_returns_201_and_allocated_batch(add_stock):
 
 @pytest.mark.usefixtures("restart_api")
 def test_unhappy_path_returns_400_and_error_message():
-    unknown_sku, orderid = random_sku(), random_orderid()
-    data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
+    unknown_sku, reference = random_sku(), random_reference()
+    data = {"reference": reference, "sku": unknown_sku, "quantity": 20}
     url = config.get_api_url()
     r = requests.post(f"{url}/allocate", json=data)
     assert r.status_code == 400
@@ -55,20 +55,20 @@ def test_unhappy_path_returns_400_and_error_message():
 
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
-def test_deallocate():
-    sku, order1, order2 = random_sku(), random_orderid(), random_orderid()
+def test_deallocate(add_batch):
+    sku, order1, order2 = random_sku(), random_reference(), random_reference()
     batch = random_batchref()
-    post_to_add_batch(batch, sku, 100, "2011-01-02")
+    add_batch(batch, sku, 100, "2011-01-02")
     url = config.get_api_url()
     # fully allocate
     r = requests.post(
-        f"{url}/allocate", json={"orderid": order1, "sku": sku, "qty": 100}
+        f"{url}/allocate", json={"reference": order1, "sku": sku, "quantity": 100}
     )
-    assert r.json()["batchid"] == batch
+    assert r.json()["batchref"] == batch
 
     # cannot allocate second order
     r = requests.post(
-        f"{url}/allocate", json={"orderid": order2, "sku": sku, "qty": 100}
+        f"{url}/allocate", json={"reference": order2, "sku": sku, "quantity": 100}
     )
     assert r.status_code == 400
 
@@ -76,7 +76,7 @@ def test_deallocate():
     r = requests.post(
         f"{url}/deallocate",
         json={
-            "orderid": order1,
+            "reference": order1,
             "sku": sku,
         },
     )
@@ -84,7 +84,7 @@ def test_deallocate():
 
     # now we can allocate second order
     r = requests.post(
-        f"{url}/allocate", json={"orderid": order2, "sku": sku, "qty": 100}
+        f"{url}/allocate", json={"reference": order2, "sku": sku, "quantity": 100}
     )
     assert r.ok
     assert r.json()["batchid"] == batch

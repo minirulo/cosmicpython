@@ -19,14 +19,32 @@ def allocate_endpoint():
     session = get_session()
     repo = repository.SqlAlchemyRepository(session)
     line = model.OrderLine(
-        request.json["orderid"],
+        request.json["reference"],
         request.json["sku"],
-        request.json["qty"],
+        request.json["quantity"],
     )
 
     try:
         batchref = services.allocate(line, repo, session)
     except (model.OutOfStock, services.InvalidSku) as e:
         return {"message": str(e)}, 400
+
+    return {"batchref": batchref}, 201
+
+
+@app.route("/deallocate", methods=["POST"])
+def allocate_endpoint():
+    session = get_session()
+    repo = repository.SqlAlchemyRepository(session)
+    line = model.OrderLine(
+        request.json["reference"],
+        request.json["sku"],
+        request.json["quantity"],
+    )
+
+    try:
+        batchref = services.deallocate(line, repo, session)
+    except (services.NotFoundError) as e:
+        return {"message": str(e)}, 404
 
     return {"batchref": batchref}, 201

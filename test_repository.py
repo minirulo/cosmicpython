@@ -46,7 +46,7 @@ def test_repository_can_save_a_batch(session):
     assert list(rows) == [("Batch-001", "LAMP", 10, None)]
 
 
-def test_repository_can_retrieve_a_batch_with_allocations(session):
+def test_repository_can_retrieve_a_batch_withallocated_orders(session):
     order_id = insert_order_line(session)
     batch1_id = insert_batch(session, "Batch-001")
     insert_batch(session, "Batch-002")

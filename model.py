@@ -38,11 +38,9 @@ class Batch:
             self.allocated_orders.remove(order)
 
     def can_allocate(self, order: OrderLine) -> bool:
-        if self.sku == order.sku:
-            if self.available_quantity < order.quantity:
-                raise OutOfStock()
-            return True
-        return False
+        if self.sku != order.sku or self.available_quantity < order.quantity:
+            return False
+        return True
 
     def __eq__(self, other):
         if not isinstance(other, Batch):

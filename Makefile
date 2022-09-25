@@ -2,6 +2,9 @@
 export COMPOSE_DOCKER_CLI_BUILD=1
 export DOCKER_BUILDKIT=1
 
+setup:
+	python3 -m venv .venv && . .venv/bin/activate && pip3 install -r requirements.txr
+	
 all: down build up test
 
 build:

@@ -1,5 +1,5 @@
 import model
-from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey, MetaData
+from sqlalchemy import Table, Column, Integer, String, Date, ForeignKey, MetaData
 from sqlalchemy.orm import mapper, relationship 
 
 
@@ -21,7 +21,7 @@ batches = Table(
     Column("reference", String(255)),
     Column("sku", String(255)),
     Column("quantity", Integer, nullable=False),
-    Column("eta", DateTime)
+    Column("eta", Date)
 )
 
 allocations = Table(
