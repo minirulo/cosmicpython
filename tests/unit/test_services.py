@@ -1,7 +1,13 @@
 import pytest
-import model
-import repository
-import services
+import domain.model as model
+import adapters.repository as repository
+import service_layer.services as services
+from datetime import date, timedelta
+
+
+today = date.today()
+tomorrow = today + timedelta(days=1)
+later = tomorrow + timedelta(days=10)
 
 
 class FakeRepository(repository.AbstractRepository):
@@ -53,6 +59,36 @@ def test_commits():
     assert session.committed is True
 
 
+# Moved from domain
+def test_prefers_current_stock_batches_to_shipments():
+    in_stock_batch = model.Batch("in-stock-batch", "RETRO-CLOCK", 100, eta=None)
+    shipment_batch = model.Batch("shipment-batch", "RETRO-CLOCK", 100, eta=tomorrow)
+    line = model.OrderLine("oref", "RETRO-CLOCK", 10)
+    repo = FakeRepository([in_stock_batch, shipment_batch])
+    session = FakeSession()
+
+    services.allocate(line, repo, session)
+
+    assert in_stock_batch.available_quantity == 90
+    assert shipment_batch.available_quantity == 100
+
+
+# Moved from domain
+def test_prefers_earlier_batches():
+    earliest = model.Batch("speedy-batch", "MINIMALIST-SPOON", 100, eta=today)
+    medium = model.Batch("normal-batch", "MINIMALIST-SPOON", 100, eta=tomorrow)
+    latest = model.Batch("slow-batch", "MINIMALIST-SPOON", 100, eta=later)
+    line = model.OrderLine("order1", "MINIMALIST-SPOON", 10)
+    repo = FakeRepository([earliest, medium, latest])
+    session = FakeSession()
+
+    services.allocate(line, repo, session)
+
+    assert earliest.available_quantity == 90
+    assert medium.available_quantity == 100
+    assert latest.available_quantity == 100
+
+
 def test_deallocate_decrements_available_quantity():
     repo, session = FakeRepository([]), FakeSession()
     services.add_batch("b1", "BLUE-PLINTH", 100, None, repo, session)
@@ -63,9 +99,11 @@ def test_deallocate_decrements_available_quantity():
     services.deallocate(line, "b1", repo, session)
     assert batch.available_quantity == 100
 
+
 @pytest.mark.skip("todo")
 def test_deallocate_decrements_correct_quantity():
     ...  #  TODO - check that we decrement the right sku
+
 
 @pytest.mark.skip("todo")
 def test_trying_to_deallocate_unallocated_batch():
