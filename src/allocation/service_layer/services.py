@@ -18,23 +18,23 @@ def is_valid_sku(sku, batches):
 def add_batch(
     ref: str,
     sku: str,
-    qty: int,
+    quantity: int,
     eta: Optional[date],
     uow : unit_of_work.AbstractUnitOfWork
 ):
     # and this could be with start_uow() as uow:
     with uow:
-        uow.batches.add(model.Batch(ref, sku, qty, eta))
+        uow.batches.add(model.Batch(ref, sku, quantity, eta))
         uow.commit()
 
 
 def allocate(
-    orderid: str,
+    reference: str,
     sku: str,
-    qty: int,
+    quantity: int,
     uow: unit_of_work.AbstractUnitOfWork,
 ) -> str:
-    line = OrderLine(orderid, sku, qty)
+    line = OrderLine(reference, sku, quantity)
     with uow:
         batches = uow.batches.list()
         if not is_valid_sku(line.sku, batches):
@@ -42,3 +42,28 @@ def allocate(
         batchref = model.allocate(line, batches)
         uow.commit()
     return batchref
+
+
+def reallocate(
+    line: OrderLine,
+    uow: unit_of_work.AbstractUnitOfWork,
+) -> str:
+    with uow:
+        batch: model.Batch = uow.batches.get(sku=line.sku)
+        if batch is None:
+            raise InvalidSku(f'Invalid sku {line.sku}')
+        batch.deallocate(line)
+        allocate(line)
+        uow.commit()
+    
+
+def change_batch_quantity(
+    batchref: str, new_qty: int,
+    uow: AbstractUnitOfWork,
+):
+    with uow:
+        batch = uow.batches.get(reference=batchref)
+        batch.change_purchased_quantity(new_qty)
+        while batch.available_quantity < 0:
+            line = batch.deallocate_one()  #(1)
+        uow.commit()

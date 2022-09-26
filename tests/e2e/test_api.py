@@ -17,14 +17,14 @@ def random_batchref(name=""):
     return f"batch-{name}-{random_suffix()}"
 
 
-def random_orderid(name=""):
+def random_reference(name=""):
     return f"order-{name}-{random_suffix()}"
 
 
-def post_to_add_batch(ref, sku, qty, eta):
+def post_to_add_batch(ref, sku, quantity, eta):
     url = config.get_api_url()
     r = requests.post(
-        f"{url}/add_batch", json={"ref": ref, "sku": sku, "qty": qty, "eta": eta}
+        f"{url}/add_batch", json={"ref": ref, "sku": sku, "quantity": quantity, "eta": eta}
     )
     assert r.status_code == 201
 
@@ -39,7 +39,7 @@ def test_happy_path_returns_201_and_allocated_batch():
     post_to_add_batch(laterbatch, sku, 100, "2011-01-02")
     post_to_add_batch(earlybatch, sku, 100, "2011-01-01")
     post_to_add_batch(otherbatch, othersku, 100, None)
-    data = {"orderid": random_orderid(), "sku": sku, "qty": 3}
+    data = {"reference": random_reference(), "sku": sku, "quantity": 3}
 
     url = config.get_api_url()
     r = requests.post(f"{url}/allocate", json=data)
@@ -51,8 +51,8 @@ def test_happy_path_returns_201_and_allocated_batch():
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
 def test_unhappy_path_returns_400_and_error_message():
-    unknown_sku, orderid = random_sku(), random_orderid()
-    data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
+    unknown_sku, reference = random_sku(), random_reference()
+    data = {"reference": reference, "sku": unknown_sku, "quantity": 20}
     url = config.get_api_url()
     r = requests.post(f"{url}/allocate", json=data)
     assert r.status_code == 400

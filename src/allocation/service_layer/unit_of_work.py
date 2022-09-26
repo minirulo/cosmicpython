@@ -13,6 +13,9 @@ from allocation.adapters import repository
 class AbstractUnitOfWork(abc.ABC):
     batches: repository.AbstractRepository
 
+    def __enter__(self):
+        return self
+
     @abc.abstractmethod
     def commit(self):
         raise NotImplementedError
@@ -22,7 +25,7 @@ class AbstractUnitOfWork(abc.ABC):
         raise NotImplementedError
 
     def __exit__(self, *args):
-        self.rollback()
+        self.rollback() # This is nice, for the default behaviour is not to change anything
 
 
 DEFAULT_SESSION_FACTORY = sessionmaker(

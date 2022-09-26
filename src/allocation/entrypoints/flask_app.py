@@ -19,7 +19,7 @@ def add_batch():
     services.add_batch(
         request.json["ref"],
         request.json["sku"],
-        request.json["qty"],
+        request.json["quantity"],
         eta,
         unit_of_work.SqlAlchemyUnitOfWork(),
     )
@@ -30,9 +30,9 @@ def add_batch():
 def allocate_endpoint():
     try:
         batchref = services.allocate(
-            request.json["orderid"],
+            request.json["reference"],
             request.json["sku"],
-            request.json["qty"],
+            request.json["quantity"],
             unit_of_work.SqlAlchemyUnitOfWork(),
         )
     except (model.OutOfStock, services.InvalidSku) as e:
