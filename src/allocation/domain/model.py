@@ -57,6 +57,23 @@ class Batch:
             return True
         return self.eta > other.eta
 
+class Product:
+    def __init__(self, sku: str, batches: List[Batch] = []) -> None:
+        self.sku = sku
+        self.batches = batches
+    
+    def add_batch(self, batch: Batch) -> str:
+        self.batches.append(batch)
+
+    def allocate(self, line: OrderLine) -> str:
+        try:
+            batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
+            batch.allocate(line)
+            return batch.reference
+        except StopIteration:
+            raise OutOfStock(f"Out of stock for sku {line.sku}")
+
+
 def allocate(line: OrderLine, batches: List[Batch]) -> str:
     try:
         batch = next(b for b in sorted(batches) if b.can_allocate(line))

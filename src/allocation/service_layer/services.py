@@ -11,10 +11,6 @@ class InvalidSku(Exception):
     pass
 
 
-def is_valid_sku(sku, batches):
-    return sku in {b.sku for b in batches}
-
-
 def add_batch(
     ref: str,
     sku: str,
@@ -22,9 +18,11 @@ def add_batch(
     eta: Optional[date],
     uow : unit_of_work.AbstractUnitOfWork
 ):
-    # and this could be with start_uow() as uow:
     with uow:
-        uow.batches.add(model.Batch(ref, sku, quantity, eta))
+        product = uow.products.get(sku)
+        if not product:
+            uow.products.add(model.Product(sku, []))
+        product.add_batch(model.Batch(ref, sku, quantity, eta))
         uow.commit()
 
 
@@ -36,10 +34,10 @@ def allocate(
 ) -> str:
     line = OrderLine(reference, sku, quantity)
     with uow:
-        batches = uow.batches.list()
-        if not is_valid_sku(line.sku, batches):
+        product = uow.products.get(sku)
+        if not product:
             raise InvalidSku(f"Invalid sku {line.sku}")
-        batchref = model.allocate(line, batches)
+        batchref = product.allocate(line)
         uow.commit()
     return batchref
 
@@ -59,7 +57,7 @@ def reallocate(
 
 def change_batch_quantity(
     batchref: str, new_qty: int,
-    uow: AbstractUnitOfWork,
+    uow: unit_of_work.AbstractUnitOfWork,
 ):
     with uow:
         batch = uow.batches.get(reference=batchref)
