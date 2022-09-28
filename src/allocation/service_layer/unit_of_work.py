@@ -9,6 +9,7 @@ from sqlalchemy.orm.session import Session
 from allocation import config
 from allocation.adapters import repository
 
+from . import messagebus
 
 class AbstractUnitOfWork(abc.ABC):
     products: repository.AbstractRepository
@@ -16,8 +17,19 @@ class AbstractUnitOfWork(abc.ABC):
     def __enter__(self):
         return self
 
-    @abc.abstractmethod
     def commit(self):
+        self._commit()
+        self.publish_events()
+
+    def publish_events(self):
+        for product in self.products.seen:
+            print(product)
+            while product.events:
+                event = product.events.pop(0)
+                messagebus.handle(event)
+
+    @abc.abstractmethod
+    def _commit(self):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -44,7 +56,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.products = repository.SqlAlchemyRepository(self.session)
         return super().__enter__()
         
-    def commit(self):
+    def _commit(self):
         self.session.commit()
         
     def rollback(self):
