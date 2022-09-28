@@ -42,6 +42,7 @@ def allocate(
     return batchref
 
 
+#!TODO: Adapt to Product aggregate
 def reallocate(
     line: OrderLine,
     uow: unit_of_work.AbstractUnitOfWork,
