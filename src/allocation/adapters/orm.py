@@ -27,7 +27,7 @@ batches = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("reference", String(255)),
-    Column("sku", String(255)),
+    Column("sku", ForeignKey("products.sku")),
     Column("quantity", Integer, nullable=False),
     Column("eta", Date)
 )
@@ -53,4 +53,4 @@ def start_mappers():
             )
         },
     )
-    mapper(model.Product, products, properties={"batches": relationship(batches_mapper, collection_class=list)})
+    mapper(model.Product, products, properties={"batches": relationship(batches_mapper)})
