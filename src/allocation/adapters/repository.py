@@ -4,7 +4,7 @@ from allocation.domain import model
 
 class AbstractRepository(abc.ABC):
     def __init__(self):
-        self.seen = set()
+        self.seen = set() # type: Set[model.Product]
 
     def add(self, product: model.Product):
         self._add(product)

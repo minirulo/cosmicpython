@@ -1,4 +1,5 @@
-from __future__ import annotations
+
+#! All this services are now handled by the messagebus
 from typing import Optional
 from datetime import date
 
@@ -20,11 +21,9 @@ def add_batch(
 ):
     with uow:
         product = uow.products.get(sku)
-        print(product)
         if not product:
             product = model.Product(sku, [])
             uow.products.add(product)
-            print(product)
         product.add_batch(model.Batch(ref, sku, quantity, eta))
         uow.commit()
 

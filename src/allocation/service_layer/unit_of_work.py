@@ -1,7 +1,6 @@
 # pylint: disable=attribute-defined-outside-init
 from __future__ import annotations
 import abc
-from typing import ContextManager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
@@ -19,14 +18,20 @@ class AbstractUnitOfWork(abc.ABC):
 
     def commit(self):
         self._commit()
-        self.publish_events()
+        # self.publish_events()
 
+    #! Before the UoW published to the messagebus
     def publish_events(self):
         for product in self.products.seen:
-            print(product)
             while product.events:
                 event = product.events.pop(0)
                 messagebus.handle(event)
+
+    #! Now the messagebus polls from the UoW
+    def collect_new_events(self):
+        for product in self.products.seen:
+            while product.events:
+                yield product.events.pop(0)
 
     @abc.abstractmethod
     def _commit(self):

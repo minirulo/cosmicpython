@@ -60,10 +60,10 @@ class Batch:
         return self.eta > other.eta
 
 class Product:
-    def __init__(self, sku: str, batches: List[Batch] = [], product_version: int = 0) -> None:
+    def __init__(self, sku: str, batches: List[Batch] = [], version_number: int = 0) -> None:
         self.sku = sku
         self.batches = batches
-        self.product_version = product_version
+        self.version_number = version_number
         self.events = []
         
     def add_batch(self, batch: Batch) -> str:
@@ -73,6 +73,7 @@ class Product:
         try:
             batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
             batch.allocate(line)
+            self.version_number += 1
             return batch.reference
         except StopIteration:
             # raise OutOfStock(f"Out of stock for sku {line.sku}")
