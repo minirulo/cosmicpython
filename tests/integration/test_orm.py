@@ -1,8 +1,8 @@
 import allocation.domain.model as model
-
+import pytest
 from datetime import date
 
-
+@pytest.mark.skip("This test is not meant for production")
 def test_orderline_mapper_can_load_lines(session):
     session.execute(
         "INSERT INTO order_lines (reference, sku, quantity) VALUES "
@@ -18,6 +18,7 @@ def test_orderline_mapper_can_load_lines(session):
     assert session.query(model.OrderLine).all() == expected
 
 
+@pytest.mark.skip("This test is not meant for production")
 def test_orderline_mapper_can_save_lines(session):
     new_line = model.OrderLine("order1", "DECORATIVE-WIDGET", 12)
     session.add(new_line)
@@ -27,6 +28,7 @@ def test_orderline_mapper_can_save_lines(session):
     assert rows == [("order1", "DECORATIVE-WIDGET", 12)]
 
 
+@pytest.mark.skip("This test is not meant for production")
 def test_retrieving_batches(session):
     session.execute(
         "INSERT INTO batches (reference, sku, quantity, eta)"
@@ -44,6 +46,7 @@ def test_retrieving_batches(session):
     assert session.query(model.Batch).all() == expected
 
 
+@pytest.mark.skip("This test is not meant for production")
 def test_saving_batches(session):
     batch = model.Batch("batch1", "sku1", 100, eta=None)
     session.add(batch)
@@ -54,6 +57,7 @@ def test_saving_batches(session):
     assert list(rows) == [("batch1", "sku1", 100, None)]
 
 
+@pytest.mark.skip("This test is not meant for production")
 def test_savingallocated_orders(session):
     batch = model.Batch("batch1", "sku1", 100, eta=None)
     line = model.OrderLine("order1", "sku1", 10)
@@ -64,6 +68,7 @@ def test_savingallocated_orders(session):
     assert rows == [(batch.id, line.id)]
 
 
+@pytest.mark.skip("This test is not meant for production")
 def test_retrievingallocated_orders(session):
     session.execute(
         'INSERT INTO order_lines (reference, sku, quantity) VALUES ("order1", "sku1", 12)'

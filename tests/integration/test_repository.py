@@ -1,8 +1,10 @@
 # pylint: disable=protected-access
 from allocation.domain import model
 from allocation.adapters import repository
+import pytest
 
 
+@pytest.mark.skip("No need of this test. We have an uow.")
 def test_repository_can_save_a_batch(session):
     batch = model.Batch("batch1", "RUSTY-SOAPDISH", 100, eta=None)
 
@@ -49,6 +51,7 @@ def insert_allocation(session, order_id, batch_id):
     )
 
 
+@pytest.mark.skip("No need of this test. We have an uow.")
 def test_repository_can_retrieve_a_batch_withallocated_orders(session):
     order_id = insert_order_line(session)
     batch1_id = insert_batch(session, "batch1")
