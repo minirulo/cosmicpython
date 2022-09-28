@@ -53,4 +53,4 @@ def start_mappers():
             )
         },
     )
-    mapper(model.Product, products, properties={"batches": relationship(batches_mapper)})
+    mapper(model.Product, products, properties={"batches": relationship(batches_mapper, collection_class=list)})

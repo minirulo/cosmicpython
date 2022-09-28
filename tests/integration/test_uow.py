@@ -3,7 +3,11 @@ from allocation.domain import model
 from allocation.service_layer import unit_of_work
 
 
-def insert_batch(session, ref, sku, quantity, eta):
+def insert_batch(session, ref, sku, quantity, eta, product_version):
+    session.execute(
+        "INSERT INTO products (sku, version_number) VALUES (:sku, :version)",
+        dict(sku=sku, version=product_version),
+    )
     session.execute(
         "INSERT INTO batches (reference, sku, quantity, eta)"
         " VALUES (:ref, :sku, :quantity, :eta)",
@@ -26,7 +30,7 @@ def get_allocated_batch_ref(session, reference, sku):
 
 def test_uow_can_retrieve_a_batch_and_allocate_to_it(session_factory):
     session = session_factory()
-    insert_batch(session, "batch1", "HIPSTER-WORKBENCH", 100, None)
+    insert_batch(session, "batch1", "HIPSTER-WORKBENCH", 100, None, 1)
     session.commit()
 
     # pytest.fail("decide what your UoW looks like first?")
@@ -37,9 +41,9 @@ def test_uow_can_retrieve_a_batch_and_allocate_to_it(session_factory):
     # or perhaps
     # with unit_of_work.start(session_factory) as uow: ?
 
-        batch = uow.batches.get(reference='batch1')
+        product = uow.products.get('HIPSTER-WORKBENCH')
         line = model.OrderLine('o1', 'HIPSTER-WORKBENCH', 10)
-        batch.allocate(line)
+        product.allocate(line)
         uow.commit()
 
     batchref = get_allocated_batch_ref(session, "o1", "HIPSTER-WORKBENCH")
