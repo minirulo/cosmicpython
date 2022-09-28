@@ -21,7 +21,8 @@ def add_batch(
     with uow:
         product = uow.products.get(sku)
         if not product:
-            uow.products.add(model.Product(sku, []))
+            product = model.Product(sku, [])
+            uow.products.add(product)
         product.add_batch(model.Batch(ref, sku, quantity, eta))
         uow.commit()
 
