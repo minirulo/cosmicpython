@@ -4,6 +4,7 @@ from allocation.service_layer import services, unit_of_work
 
 class FakeRepository(repository.AbstractRepository):
     def __init__(self, products):
+        super().__init__()
         self._products = set(products)
 
     def _add(self, product):

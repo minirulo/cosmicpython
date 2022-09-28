@@ -3,7 +3,8 @@ from allocation.domain import model
 
 
 class AbstractRepository(abc.ABC):
-    seen = set()
+    def __init__(self):
+        self.seen = set()
 
     def add(self, product: model.Product):
         self._add(product)
@@ -26,6 +27,7 @@ class AbstractRepository(abc.ABC):
 
 class SqlAlchemyRepository(AbstractRepository):
     def __init__(self, session):
+        super().__init__()
         self.session = session
 
     def _add(self, product):

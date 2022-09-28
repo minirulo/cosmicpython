@@ -60,9 +60,10 @@ class Batch:
         return self.eta > other.eta
 
 class Product:
-    def __init__(self, sku: str, batches: List[Batch] = []) -> None:
+    def __init__(self, sku: str, batches: List[Batch] = [], product_version: int = 0) -> None:
         self.sku = sku
         self.batches = batches
+        self.product_version = product_version
         self.events = []
         
     def add_batch(self, batch: Batch) -> str:
