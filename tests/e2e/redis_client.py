@@ -1,15 +1,17 @@
 import redis
 from allocation import config
-from allocation.domain import events
-
+import json
 
 r = redis.Redis(**config.get_redis_host_and_port())
 
-def subscribe_to(channel: str):
-    pubsub = r.pubsub(ignore_subscribe_messages=True)
-    pubsub.subscribe("change_batch_quantity")
+
+def subscribe_to(channel):
+    pubsub = r.pubsub()
+    pubsub.subscribe(channel)
+    confirmation = pubsub.get_message(timeout=3)
+    assert confirmation["type"] == "subscribe"
+    return pubsub
 
 
-def publish_to(channel: str, event: events.Event):
-    pubsub = r.pubsub(ignore_subscribe_messages=True)
-    pubsub.publish("change_batch_quantity") 
+def publish_message(channel, message):
+    r.publish(channel, json.dumps(message))

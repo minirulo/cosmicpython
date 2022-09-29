@@ -37,9 +37,9 @@ def post_to_allocate(ref, sku, quantity):
     return r
 
 class TestRedisEvents:
-    def test_change_batch_quantity_leading_to_reallocation():
+    def test_change_batch_quantity_leading_to_reallocation(self):
         # We create some batches, and allocations
-        sku, othersku = random_sku()
+        sku = random_sku()
         earlybatch = random_batchref(1)
         laterbatch = random_batchref(2)
         post_to_add_batch(laterbatch, sku, 10, "2011-01-02")
@@ -53,7 +53,7 @@ class TestRedisEvents:
         # Publish an event to the external event broker to change quantity
         redis_client.publish_message(  #(3)
             "change_batch_quantity",
-            {"batchref": earlier_batch, "qty": 5},
+            {"batchref": earlybatch, "qty": 5},
         )
 
         # We wait for the reallocation event to come back to our subscription
