@@ -1,5 +1,5 @@
 from allocation.domain import commands, events
-from allocation.adapters import email
+from allocation.adapters import email, redis_eventpublisher
 from . import unit_of_work
 from allocation.domain import model
 from typing import Dict, Type, List, Callable, Union
@@ -63,6 +63,13 @@ def send_out_of_stock_notification(
     uow: unit_of_work.AbstractUnitOfWork,
 ):
     email.send_email(f"Out of stock for sku {event.sku}")
+
+
+def send_allocated_notification(
+    event: events.OutOfStock,
+    uow: unit_of_work.AbstractUnitOfWork,
+):
+    redis_eventpublisher.publish("line_allocated", event)
 
 
 class AbstractMessageBus:
@@ -130,6 +137,7 @@ class AbstractMessageBus:
 class MessageBus(AbstractMessageBus):
     EVENT_HANDLERS = {
         events.OutOfStock: [send_out_of_stock_notification]
+        events.Allocated: [send_allocated_notification]
     }
     COMMAND_HANDLERS = {
         commands.CreateBatch: add_batch,

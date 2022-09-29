@@ -76,6 +76,9 @@ class Product:
         try:
             batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
             batch.allocate(line)
+            self.events.append(
+                events.Allocated(line.reference, line.sku, line.quantity, batch.reference)
+            )
             self.version_number += 1
             return batch.reference
         except StopIteration:
