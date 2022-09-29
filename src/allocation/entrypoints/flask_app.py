@@ -3,7 +3,7 @@ from flask import Flask, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from allocation.domain import model, events
+from allocation.domain import model, commands
 from allocation.adapters import orm
 from allocation.service_layer import services, unit_of_work, messagebus
 
@@ -18,7 +18,7 @@ def add_batch():
         eta = datetime.fromisoformat(eta).date()
     uow = unit_of_work.SqlAlchemyUnitOfWork()
     bus = messagebus.MessageBus()
-    bus.handle(events.BatchCreated(request.json["ref"],request.json["sku"],request.json["quantity"],eta), uow)
+    bus.handle(commands.CreateBatch(request.json["ref"],request.json["sku"],request.json["quantity"],eta), uow)
     return "OK", 201
 
 
@@ -27,7 +27,7 @@ def allocate_endpoint():
     try:
         uow = unit_of_work.SqlAlchemyUnitOfWork()
         bus = messagebus.MessageBus()
-        [batchref] = bus.handle(events.AllocationRequired(request.json["reference"],request.json["sku"],request.json["quantity"]), uow)
+        [batchref] = bus.handle(commands.Allocate(request.json["reference"],request.json["sku"],request.json["quantity"]), uow)
     except (model.OutOfStock, messagebus.InvalidSku) as e:
         return {"message": str(e)}, 400
 

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Set, Optional, List
 
-from . import events
+from . import events, commands
 
 class OutOfStock(Exception):
     pass
@@ -67,7 +67,7 @@ class Product:
         self.sku = sku
         self.batches = batches
         self.version_number = version_number
-        self.events = []
+        self.events = [] # type: Union[events.Event, commands.Command]
         
     def add_batch(self, batch: Batch) -> str:
         self.batches.append(batch)
@@ -89,7 +89,7 @@ class Product:
             while batch.available_quantity < 0:
                 line = batch.deallocate_one()
                 self.events.append(
-                    events.AllocationRequired(line.reference, line.sku, line.quantity)
+                    commands.Allocate(line.reference, line.sku, line.quantity)
                 )
 
 

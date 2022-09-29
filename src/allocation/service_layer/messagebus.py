@@ -1,8 +1,15 @@
-from allocation.domain import events
+from allocation.domain import commands, events
 from allocation.adapters import email
 from . import unit_of_work
 from allocation.domain import model
-from typing import Dict, Type, List, Callable
+from typing import Dict, Type, List, Callable, Union
+from tenacity import Retrying, RetryError, stop_after_attempt, wait_exponential
+
+import logging
+logger = logging.getLogger(__name__)
+
+Message = Union[events.Event, commands.Command]
+
 
 class InvalidSku(Exception):
     pass
@@ -13,40 +20,43 @@ class NotFound(Exception):
 
 
 def add_batch(
-    event: events.BatchCreated,
+    command: commands.CreateBatch,
     uow : unit_of_work.AbstractUnitOfWork
 ):
     with uow:
-        product = uow.products.get(event.sku)
+        product = uow.products.get(command.sku)
         if not product:
-            product = model.Product(event.sku, [])
+            product = model.Product(command.sku, [])
             uow.products.add(product)
-        product.add_batch(model.Batch(event.ref, event.sku, event.qty, event.eta))
+        product.add_batch(model.Batch(command.ref, command.sku, command.qty, command.eta))
         uow.commit()
 
+
 def allocate(
-    event: events.AllocationRequired,
+    command: commands.Allocate,
     uow: unit_of_work.AbstractUnitOfWork,
 ) -> str:
-    line = model.OrderLine(event.ref, event.sku, event.qty)
+    line = model.OrderLine(command.ref, command.sku, command.qty)
     with uow:
-        product = uow.products.get(event.sku)
+        product = uow.products.get(command.sku)
         if not product:
             raise InvalidSku(f"Invalid sku {line.sku}")
         batchref = product.allocate(line)
         uow.commit()
     return batchref
 
+
 def change_batch_quantity(
-    event: events.ChangeBatchQuantity,
+    command: commands.ChangeBatchQuantity,
     uow: unit_of_work.AbstractUnitOfWork,
 ):
     with uow:
-        product = uow.products.get_by_batchref(event.ref)
+        product = uow.products.get_by_batchref(command.ref)
         if not product:
-            raise NotFound(f"Batch {event.ref} not found")
-        product.change_batch_quantity(event.ref, event.qty)
+            raise NotFound(f"Batch {command.ref} not found")
+        product.change_batch_quantity(command.ref, command.qty)
         uow.commit()
+
 
 def send_out_of_stock_notification(
     event: events.OutOfStock,
@@ -56,27 +66,73 @@ def send_out_of_stock_notification(
 
 
 class AbstractMessageBus:
-    HANDLERS: Dict[Type[events.Event], List[Callable]]
+    EVENT_HANDLERS: Dict[Type[events.Event], List[Callable]]
+    COMMAND_HANDLERS: Dict[Type[events.Event], List[Callable]]
 
     def handle(
         self,
-        event: events.Event,
+        message: Message,
         uow: unit_of_work.AbstractUnitOfWork
     ):
         results = []
-        queue = [event]
+        queue = [message]
         while queue:
-            event = queue.pop(0)
-            for handler in self.HANDLERS[type(event)]:
-                results.append(handler(event, uow=uow))
-                queue.extend(uow.collect_new_events())
+            message = queue.pop(0)
+            if isinstance(message, events.Event):
+                self.handle_event(message, uow, queue)
+            elif isinstance(message, commands.Command):
+                result = self.handle_command(message, uow, queue)
+                results.append(result)
+            else:
+                raise Exception(f"{message} is neither a Command nor an Event")
         return results
+    
+    def handle_command(
+        self,
+        command: commands.Command,
+        uow: unit_of_work.AbstractUnitOfWork,
+        queue: List[Message]
+    ):
+        logger.debug("handling command %s", command)
+        try:
+            handler = self.COMMAND_HANDLERS[type(command)]
+            result = handler(command, uow=uow)
+            queue.extend(uow.collect_new_events())
+            return result
+        except Exception as e:
+            logger.exception("Erro handling command %s", command)
+            raise
 
+    def handle_event(
+        self,
+        event: events.Event,
+        uow: unit_of_work.AbstractUnitOfWork,
+        queue: List[Message]
+    ):
+        for handler in self.EVENT_HANDLERS[type(event)]:
+            try:
+                for attempt in Retrying(
+                    stop=stop_after_attempt(3),
+                    wait=wait_exponential()
+                ):
+                    with attempt:
+                        logger.debug("handling event %s with handler %s", event, handler)
+                        handler(event, uow=uow)
+                        queue.extend(uow.collect_new_events())
+            except RetryError as retry_fail:
+                logger.error(
+                    "Failed to handle event %s times, giving up!",
+                    retry_fail.last_attempt.attempt_number
+                )
+                continue
+    
 
 class MessageBus(AbstractMessageBus):
-    HANDLERS = {
-        events.OutOfStock: [send_out_of_stock_notification],
-        events.BatchCreated: [add_batch],
-        events.AllocationRequired: [allocate],
-        events.ChangeBatchQuantity: [change_batch_quantity]
+    EVENT_HANDLERS = {
+        events.OutOfStock: [send_out_of_stock_notification]
+    }
+    COMMAND_HANDLERS = {
+        commands.CreateBatch: add_batch,
+        commands.Allocate: allocate,
+        commands.ChangeBatchQuantity: change_batch_quantity
     }
