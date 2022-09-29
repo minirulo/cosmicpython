@@ -136,7 +136,7 @@ class AbstractMessageBus:
 
 class MessageBus(AbstractMessageBus):
     EVENT_HANDLERS = {
-        events.OutOfStock: [send_out_of_stock_notification]
+        events.OutOfStock: [send_out_of_stock_notification],
         events.Allocated: [send_allocated_notification]
     }
     COMMAND_HANDLERS = {

@@ -67,3 +67,30 @@ class TestRedisEvents:
                 data = json.loads(messages[-1]["data"])
                 assert data["orderid"] == orderid
                 assert data["batchref"] == laterbatch
+            
+
+    def test_allocate_event(self):
+        # We create some batches, and allocations
+        sku = random_sku()
+        batch = random_batchref(1)
+        post_to_add_batch(batch, sku, 100, "2011-01-02")
+        orderid = random_reference()
+
+        subscription = redis_client.subscribe_to("allocate")
+
+        # Publish an event to the external event broker to change quantity
+        redis_client.publish_message(  #(3)
+            "allocate",
+            {"orderid": orderid, "sku": sku, "qty": 10},
+        )
+
+        # We wait for the reallocation event to come back to our subscription
+        messages = []
+        for attempt in Retrying(stop=stop_after_delay(3), reraise=True):  #(4)
+            with attempt:
+                message = subscription.get_message(timeout=1)
+                if message:
+                    messages.append(message)
+                    print(messages)
+                data = json.loads(messages[-1]["data"])
+                assert data["orderid"] == orderid

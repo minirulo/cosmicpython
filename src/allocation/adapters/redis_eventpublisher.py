@@ -2,7 +2,7 @@ import redis
 from allocation import config
 from allocation.domain import events
 import json
-from json import asdict
+from dataclasses import asdict
 import logging
 
 r = redis.Redis(**config.get_redis_host_and_port())
