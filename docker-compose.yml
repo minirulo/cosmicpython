@@ -25,4 +25,9 @@ services:
       - POSTGRES_PASSWORD=abc123
     ports:
       - "54321:5432"
+    
+  redis:
+    image: redis
+    ports:
+      - "63791:6379"
 
