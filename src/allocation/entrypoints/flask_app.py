@@ -3,9 +3,9 @@ from flask import Flask, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from allocation.domain import model
+from allocation.domain import model, events
 from allocation.adapters import orm
-from allocation.service_layer import services, unit_of_work
+from allocation.service_layer import services, unit_of_work, messagebus
 
 app = Flask(__name__)
 orm.start_mappers()
@@ -16,26 +16,19 @@ def add_batch():
     eta = request.json["eta"]
     if eta is not None:
         eta = datetime.fromisoformat(eta).date()
-    services.add_batch(
-        request.json["ref"],
-        request.json["sku"],
-        request.json["quantity"],
-        eta,
-        unit_of_work.SqlAlchemyUnitOfWork(),
-    )
+    uow = unit_of_work.SqlAlchemyUnitOfWork()
+    bus = messagebus.MessageBus()
+    bus.handle(events.BatchCreated(request.json["ref"],request.json["sku"],request.json["quantity"],eta), uow)
     return "OK", 201
 
 
 @app.route("/allocate", methods=["POST"])
 def allocate_endpoint():
     try:
-        batchref = services.allocate(
-            request.json["reference"],
-            request.json["sku"],
-            request.json["quantity"],
-            unit_of_work.SqlAlchemyUnitOfWork(),
-        )
-    except (model.OutOfStock, services.InvalidSku) as e:
+        uow = unit_of_work.SqlAlchemyUnitOfWork()
+        bus = messagebus.MessageBus()
+        [batchref] = bus.handle(events.AllocationRequired(request.json["reference"],request.json["sku"],request.json["quantity"]), uow)
+    except (model.OutOfStock, messagebus.InvalidSku) as e:
         return {"message": str(e)}, 400
 
     return {"batchref": batchref}, 201

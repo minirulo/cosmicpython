@@ -44,6 +44,9 @@ class Batch:
             return False
         return True
 
+    def deallocate_one(self) -> OrderLine:
+        return self.allocated_orders.pop()
+
     def __eq__(self, other):
         if not isinstance(other, Batch):
             return False
@@ -78,6 +81,16 @@ class Product:
         except StopIteration:
             # raise OutOfStock(f"Out of stock for sku {line.sku}")
             self.events.append(events.OutOfStock(self.sku))
+
+    def change_batch_quantity(self, ref: str, qty: int) -> str:
+            batch = next(b for b in self.batches if b.reference == ref)
+            batch.quantity = qty
+            self.version_number += 1
+            while batch.available_quantity < 0:
+                line = batch.deallocate_one()
+                self.events.append(
+                    events.AllocationRequired(line.reference, line.sku, line.quantity)
+                )
 
 
 #! Without aggregations

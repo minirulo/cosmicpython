@@ -24,3 +24,9 @@ class AllocationRequired(Event):
     ref: str
     sku: str
     qty: int
+
+
+@dataclass
+class ChangeBatchQuantity(Event):
+    ref: str
+    qty: int
