@@ -4,6 +4,9 @@ import requests
 from tenacity import Retrying, stop_after_delay
 import json
 
+from . import redis_client
+
+
 def random_suffix():
     return uuid.uuid4().hex[:6]
 

@@ -3,6 +3,7 @@ sqlalchemy
 flask
 psycopg2-binary
 tenacity
+redis
 
 # tests
 pytest
