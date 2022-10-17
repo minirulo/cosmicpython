@@ -1,8 +1,10 @@
 from allocation.adapters import repository
 from allocation.service_layer import messagebus, unit_of_work
 from allocation.domain import events, commands
+from allocation import bootstrap
 from datetime import date
-
+from sqlalchemy.orm import clear_mappers
+import pytest
 
 class FakeRepository(repository.AbstractRepository):
     def __init__(self, products):
@@ -37,37 +39,41 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         pass
 
 
+@pytest.fixture
+def sqlite_bus():
+    bus = bootstrap.bootstrap(
+        start_orm=False,
+        uow=FakeUnitOfWork(),
+        send_mail=lambda *args: None,
+        publish=lambda *args: None,
+    )
+    yield bus
+    clear_mappers()
+
+
 class TestAddBatch:
-    def test_for_new_products(self):
-        uow = FakeUnitOfWork()
-        bus = messagebus.MessageBus()
-        bus.handle(commands.CreateBatch(ref="b1", sku="CRUNCHY-ARMCHAIR", qty=100, eta=None), uow)
-        assert uow.products.get("CRUNCHY-ARMCHAIR") is not None
-        assert uow.committed
+    def test_for_new_products(self, sqlite_bus):
+        sqlite_bus.handle(commands.CreateBatch(ref="b1", sku="CRUNCHY-ARMCHAIR", qty=100, eta=None))
+        assert sqlite_bus.uow.products.get("CRUNCHY-ARMCHAIR") is not None
+        assert sqlite_bus.uow.committed
 
 
 class TestAllocate:
-    def test_allocate_returns_allocation(self):
-        uow = FakeUnitOfWork()
-        bus = messagebus.MessageBus()
-        bus.handle(commands.CreateBatch(ref="b1", sku="CRUNCHY-ARMCHAIR", qty=100, eta=None), uow)
+    def test_allocate_returns_allocation(self, sqlite_bus):
+        sqlite_bus.handle(commands.CreateBatch(ref="b1", sku="CRUNCHY-ARMCHAIR", qty=100, eta=None))
         # We will resolve this result dependency later on....
-        result = bus.handle(commands.Allocate(ref="o1",sku="CRUNCHY-ARMCHAIR",qty=10), uow)
+        result = sqlite_bus.handle(commands.Allocate(ref="o1",sku="CRUNCHY-ARMCHAIR",qty=10))
         assert result == ["b1"]
 
     
 class TestChangeBatchQuantity:
-    def test_available_quantity_change(self):
-        uow = FakeUnitOfWork()
-        bus = messagebus.MessageBus()
-        bus.handle(commands.CreateBatch(ref="b1", sku="CRUNCHY-ARMCHAIR", qty=100, eta=None), uow)
-        bus.handle(commands.ChangeBatchQuantity(ref="b1", qty=50), uow)
-        [batch] = uow.products.get("CRUNCHY-ARMCHAIR").batches
+    def test_available_quantity_change(self, sqlite_bus):
+        sqlite_bus.handle(commands.CreateBatch(ref="b1", sku="CRUNCHY-ARMCHAIR", qty=100, eta=None))
+        sqlite_bus.handle(commands.ChangeBatchQuantity(ref="b1", qty=50))
+        [batch] = sqlite_bus.uow.products.get("CRUNCHY-ARMCHAIR").batches
         assert batch.available_quantity == 50
 
-    def test_reallocate_on_quantity_change(self):
-        uow = FakeUnitOfWork()
-        bus = messagebus.MessageBus()
+    def test_reallocate_on_quantity_change(self, sqlite_bus):
         setup = [
             commands.CreateBatch(ref="b1", sku="CRUNCHY-ARMCHAIR", qty=50, eta=None),
             commands.CreateBatch(ref="b2", sku="CRUNCHY-ARMCHAIR", qty=50, eta=date.today()),
@@ -76,13 +82,13 @@ class TestChangeBatchQuantity:
         ]
 
         for event in setup:
-            bus.handle(event, uow)
+            sqlite_bus.handle(event)
         
-        [batch1, batch2] = uow.products.get("CRUNCHY-ARMCHAIR").batches
+        [batch1, batch2] = sqlite_bus.uow.products.get("CRUNCHY-ARMCHAIR").batches
         assert batch1.available_quantity == 30
         assert batch2.available_quantity == 50
 
-        bus.handle(commands.ChangeBatchQuantity(ref="b1", qty=10), uow)
-        [batch1, batch2] = uow.products.get("CRUNCHY-ARMCHAIR").batches
+        sqlite_bus.handle(commands.ChangeBatchQuantity(ref="b1", qty=10))
+        [batch1, batch2] = sqlite_bus.uow.products.get("CRUNCHY-ARMCHAIR").batches
         assert batch1.available_quantity == 0
         assert batch2.available_quantity == 40
