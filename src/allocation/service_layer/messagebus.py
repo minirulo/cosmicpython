@@ -46,6 +46,24 @@ def allocate(
     return batchref
 
 
+def add_allocation_to_read_model(
+    event: events.Allocated,
+    uow: unit_of_work.AbstractUnitOfWork,
+) -> str:
+    # We could Go To the ORM 
+    # with uow:
+    #     uow.session.execute(
+    #         """
+    #         INSERT INTO allocations_view (orderid, sku, batchref)
+    #         VALUES (:orderid, :sku, :batchref)
+    #         """,
+    #         dict(orderid=event.orderid, sku=event.sku, batchref=event.batchref)
+    #     )
+    #     uow.commit()
+    # But better take profit of redis!
+    redis_eventpublisher.update_readmodel(event.orderid, event.sku, event.batchref)
+
+
 def change_batch_quantity(
     command: commands.ChangeBatchQuantity,
     uow: unit_of_work.AbstractUnitOfWork,
@@ -137,7 +155,10 @@ class AbstractMessageBus:
 class MessageBus(AbstractMessageBus):
     EVENT_HANDLERS = {
         events.OutOfStock: [send_out_of_stock_notification],
-        events.Allocated: [send_allocated_notification]
+        events.Allocated: [
+            send_allocated_notification,
+            add_allocation_to_read_model,
+        ]
     }
     COMMAND_HANDLERS = {
         commands.CreateBatch: add_batch,

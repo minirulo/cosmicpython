@@ -20,7 +20,7 @@ def main():
 
     for m in pubsub.listen():
         logger.debug("handling %s", m)
-        handler = HANDLERS[m['channel']]
+        handler = HANDLERS[json.loads(m['channel'])]
         handler(m)
 
 
